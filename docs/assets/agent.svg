@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="372" viewBox="0 0 880 372" role="img" aria-labelledby="title">
+  <title id="title">An AI coding agent connects the VPN through nordvpn mcp after the user approves</title>
+  <style>
+    text { font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace; font-size: 15px; fill: #e6edf3; }
+    .dim { fill: #8b949e; }
+    .ok { fill: #3fb950; }
+    .tool { fill: #d2a8ff; font-weight: 700; }
+    .ask { fill: #e3b341; }
+    .title { font-size: 13px; fill: #8b949e; }
+  </style>
+  <rect x="0.5" y="0.5" width="879" height="371" rx="12" fill="#0d1117" stroke="#30363d"/>
+  <path d="M0.5 12.5a12 12 0 0 1 12-12h855a12 12 0 0 1 12 12v27.5h-879z" fill="#161b22"/>
+  <circle cx="24" cy="20" r="6" fill="#ff5f57"/>
+  <circle cx="44" cy="20" r="6" fill="#febc2e"/>
+  <circle cx="64" cy="20" r="6" fill="#28c840"/>
+  <text x="440" y="25" text-anchor="middle" class="title">AI agent · nordvpn mcp</text>
+
+  <rect x="24" y="58" width="3" height="22" fill="#58a6ff"/>
+  <text x="38" y="75">Connect me to Germany, then check that my IP changed</text>
+
+  <text x="28" y="120"><tspan class="tool">● nordvpn_connect</tspan><tspan class="dim">  location: "germany"</tspan></text>
+  <text x="52" y="144" class="ask">Allow this tool? It changes the network. › Yes</text>
+  <text x="52" y="168"><tspan class="dim">└ </tspan>Connected to Germany #1141. Public IP 203.0.113.42</text>
+  <text x="70" y="192">(Frankfurt, Germany), protected by NordVPN.</text>
+
+  <text x="28" y="236"><tspan class="tool">● nordvpn_get_status</tspan><tspan class="dim">  read-only, no approval needed</tspan></text>
+  <text x="52" y="260"><tspan class="dim">└ </tspan>vpn.state: <tspan class="ok">"connected"</tspan> · publicIP.protected: <tspan class="ok">true</tspan></text>
+
+  <text x="28" y="312">You are connected through Germany #1141. Your public IP is now</text>
+  <text x="28" y="336">203.0.113.42 in Frankfurt, and NordVPN reports it as protected.</text>
+</svg>

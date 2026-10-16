@@ -5,9 +5,9 @@ PREFIX ?= $(HOME)/.local
 build:
 	swift build -c release
 
-# swift-testing needs the Xcode toolchain; the Command Line Tools lack its macro plugin.
+# Older Command Line Tools lack the swift-testing macros: run `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer make test`.
 test:
-	DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
+	swift test
 
 install: build
 	install -d $(PREFIX)/bin
@@ -25,13 +25,3 @@ smoke: build
 
 package:
 	bash scripts/package-release.sh
-
-.PHONY: mcp mcp-test
-mcp:
-	npm --prefix mcp ci --ignore-scripts
-	npm --prefix mcp run build
-	@echo "MCP server: node $(CURDIR)/mcp/dist/index.js (see mcp/README.md)"
-
-mcp-test:
-	npm --prefix mcp ci --ignore-scripts
-	npm --prefix mcp test

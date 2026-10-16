@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d1117"/>
+      <stop offset="1" stop-color="#10233f"/>
+    </linearGradient>
+  </defs>
+  <style>
+    .sans { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 22px; fill: #e6edf3; }
+    .dim { fill: #8b949e; }
+    .ok { fill: #3fb950; }
+    .tool { fill: #d2a8ff; font-weight: 700; }
+    .chip { font-size: 22px; font-weight: 600; fill: #c9d1d9; }
+  </style>
+  <rect width="1280" height="640" fill="url(#bg)"/>
+
+  <text x="80" y="170" class="sans" font-size="76" font-weight="800" fill="#ffffff">nordvpn-cli</text>
+  <text x="80" y="232" class="sans" font-size="32" fill="#c9d1d9">Control the NordVPN Mac app from your</text>
+  <text x="80" y="274" class="sans" font-size="32" fill="#c9d1d9">terminal, your scripts and your AI agents.</text>
+
+  <g class="sans">
+    <rect x="80" y="318" width="102" height="44" rx="22" fill="#21262d" stroke="#30363d"/>
+    <text x="131" y="347" text-anchor="middle" class="chip">Swift</text>
+    <rect x="196" y="318" width="146" height="44" rx="22" fill="#21262d" stroke="#30363d"/>
+    <text x="269" y="347" text-anchor="middle" class="chip">macOS 13+</text>
+    <rect x="356" y="318" width="168" height="44" rx="22" fill="#21262d" stroke="#30363d"/>
+    <text x="440" y="347" text-anchor="middle" class="chip">MCP server</text>
+    <rect x="538" y="318" width="96" height="44" rx="22" fill="#21262d" stroke="#30363d"/>
+    <text x="586" y="347" text-anchor="middle" class="chip">JSON</text>
+  </g>
+
+  <rect x="80" y="400" width="1120" height="170" rx="14" fill="#0d1117" stroke="#30363d"/>
+  <text x="112" y="446" class="mono"><tspan class="dim">$ </tspan>nordvpn connect germany</text>
+  <text x="112" y="482" class="mono"><tspan class="ok">Connected</tspan> to <tspan font-weight="700">Germany #1141</tspan> · 203.0.113.42</text>
+  <text x="112" y="530" class="mono"><tspan class="dim">agent › </tspan><tspan class="tool">nordvpn_get_status</tspan><tspan class="dim"> → </tspan>connected, <tspan class="ok">protected</tspan></text>
+
+  <text x="80" y="612" class="sans" font-size="20" fill="#8b949e">github.com/d4ms3c/nordvpn-cli · Unofficial, not affiliated with NordVPN</text>
+</svg>

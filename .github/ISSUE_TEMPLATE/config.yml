@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: MCP setup guide
+    url: https://github.com/d4ms3c/nordvpn-cli/blob/main/docs/mcp.md
+    about: Adding nordvpn mcp to Claude Code, Codex, Cursor, VS Code and other agents.
