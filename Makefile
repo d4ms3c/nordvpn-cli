@@ -25,3 +25,13 @@ smoke: build
 
 package:
 	bash scripts/package-release.sh
+
+.PHONY: mcp mcp-test
+mcp:
+	npm --prefix mcp ci --ignore-scripts
+	npm --prefix mcp run build
+	@echo "MCP server: node $(CURDIR)/mcp/dist/index.js (see mcp/README.md)"
+
+mcp-test:
+	npm --prefix mcp ci --ignore-scripts
+	npm --prefix mcp test

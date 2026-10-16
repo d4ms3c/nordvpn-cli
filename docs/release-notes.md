@@ -6,6 +6,7 @@
 - Invalid connect/disconnect timeouts fail before interacting with the app.
 - Disconnect reports missing Accessibility access without triggering a system permission dialog.
 - Release automation builds Apple Silicon and Intel archives with shell completions, checksums and a Homebrew formula.
+- An optional MCP server in `mcp/` lets Claude Code, Codex, Cursor, VS Code and other agents check the VPN and, with approval, connect or disconnect. It is built from source and needs Node.js 22 or later; release archives do not include it.
 
 ## Compatibility and limitations
 

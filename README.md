@@ -19,7 +19,7 @@ nordvpn disconnect         # requires Accessibility and English app menus
 nordvpn doctor             # diagnose setup without changing the connection
 ```
 
-No additional VPN credentials or configuration files to manage. Built in Swift, with JSON output for scripts and shell completions.
+No additional VPN credentials or configuration files to manage. Built in Swift, with JSON output for scripts, shell completions and an [MCP server](mcp/README.md) for AI coding agents.
 
 ## Requirements
 
@@ -85,6 +85,17 @@ Exit status: `0` means the command completed successfully; `1` means an operatio
 
 See [automation examples](docs/examples.md) for JSON checks, Raycast and SwiftBar.
 
+### AI coding agents (MCP)
+
+The [MCP server](mcp/README.md) in `mcp/` lets Claude Code, Codex, Cursor, VS Code and other MCP clients check the VPN state and, with your approval, connect or disconnect. It needs Node.js 22 or later:
+
+```sh
+make mcp
+claude mcp add --scope user nordvpn -- node "$PWD/mcp/dist/index.js"
+```
+
+Setup for the other clients, approval settings and a read-only mode are in the [MCP guide](mcp/README.md).
+
 ### Accessibility permission
 
 The app has no deep link for disconnecting, so `nordvpn disconnect` presses the app's own "Disconnect" menu item through the macOS Accessibility API. Allow your terminal app in **System Settings → Privacy & Security → Accessibility**. The other commands need no permission.
@@ -130,10 +141,12 @@ make test     # needs Xcode: the Command Line Tools lack the swift-testing macro
 make smoke    # CLI contracts; no VPN changes
 make package  # local release archive and completions
 make xcode    # open the package in Xcode
+make mcp-test # MCP server tests against a fake CLI; no VPN changes
 ```
 
 - `Sources/NordVPNKit`: library (VPN profile state, app bridge, log reader, API client, location resolver)
 - `Sources/nordvpn`: commands, built on swift-argument-parser
+- `mcp`: MCP server for AI coding agents, in TypeScript, driving the CLI
 
 ## Contributing
 

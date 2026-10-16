@@ -1,0 +1,30 @@
+{
+  "name": "nordvpn-mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local MCP companion for the nordvpn macOS CLI",
+  "type": "module",
+  "bin": {
+    "nordvpn-mcp-server": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "zod": "4.6.7",
+    "@modelcontextprotocol/server": "2.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.0",
+    "@modelcontextprotocol/client": "2.3.1"
+  }
+}
