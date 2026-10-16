@@ -11,6 +11,12 @@ public enum ResolvedLocation: Equatable, Sendable {
         case let .country(country), let .city(_, country): country
         }
     }
+
+    /// Set for a city, which the app cannot target.
+    public var cityWarning: String? {
+        guard case let .city(city, in: country) = self else { return nil }
+        return "The app cannot pick a city: connecting to the fastest server in \(country.name), not specifically \(city.name)."
+    }
 }
 
 public enum LocationError: LocalizedError, Equatable {

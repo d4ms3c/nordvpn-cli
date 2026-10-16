@@ -12,6 +12,28 @@ public struct Country: Codable, Sendable, Equatable {
     public let code: String
     public let serverCount: Int
     public let cities: [City]
+
+    /// Whether the name contains `filter` or the code equals it, ignoring case.
+    public func matches(_ filter: String) -> Bool {
+        let filter = filter.lowercased()
+        return name.lowercased().contains(filter) || code.lowercased() == filter
+    }
+}
+
+/// Server groups by their command-line name, with the identifier the API filters on.
+public enum ServerGroup: String, CaseIterable, Sendable {
+    case standard, p2p, double, onion, obfuscated, dedicated
+
+    public var identifier: String {
+        switch self {
+        case .standard: "legacy_standard"
+        case .p2p: "legacy_p2p"
+        case .double: "legacy_double_vpn"
+        case .onion: "legacy_onion_over_vpn"
+        case .obfuscated: "legacy_obfuscated_servers"
+        case .dedicated: "legacy_dedicated_ip"
+        }
+    }
 }
 
 public struct IPInsights: Codable, Sendable {

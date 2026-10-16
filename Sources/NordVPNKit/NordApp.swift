@@ -7,6 +7,7 @@ public enum NordAppError: LocalizedError {
     case noProfile
     case accessibilityDenied
     case disconnectItemNotFound
+    case stillConnected(after: TimeInterval)
 
     public var errorDescription: String? {
         switch self {
@@ -24,6 +25,8 @@ public enum NordAppError: LocalizedError {
             """
         case .disconnectItemNotFound:
             "Could not find a \"Disconnect\" control in the NordVPN menus. Is the VPN connected?"
+        case let .stillConnected(seconds):
+            "Asked the app to disconnect, but the tunnel is still up after \(Int(seconds))s."
         }
     }
 }

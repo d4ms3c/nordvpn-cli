@@ -18,6 +18,7 @@ struct NordVPN: AsyncParsableCommand {
           nordvpn disconnect               disconnect
           nordvpn countries                list where you can connect
           nordvpn servers pl --group p2p   least loaded P2P servers in Poland
+          nordvpn mcp                      MCP server for AI agents (Claude Code, Codex, Cursor…)
 
         Limits of the app: only a country can be chosen (not a city, group or server), and \
         `disconnect` needs Accessibility access for your terminal in System Settings > \
@@ -25,7 +26,7 @@ struct NordVPN: AsyncParsableCommand {
         """,
         version: "0.2.0",
         subcommands: [Status.self, Connect.self, Disconnect.self, Countries.self, Cities.self,
-                      Servers.self, IP.self, Open.self, Doctor.self],
+                      Servers.self, IP.self, Open.self, Doctor.self, MCP.self],
         defaultSubcommand: Status.self
     )
 }
@@ -44,27 +45,17 @@ struct Status: AsyncParsableCommand {
 
     @Flag(help: "Print machine-readable JSON.") var json = false
 
-    struct Report: Encodable {
-        let vpn: VPNSnapshot?
-        let server: String?
-        let lastTarget: String?
-        let publicIP: IPInsights?
-    }
-
     func run() async throws {
-        let vpn = VPNService.current()
-        let insights = try? await NordAPI().insights()
-        let server = vpn?.state == .connected ? NordApp.lastServerName() : nil
-        if json {
-            return try printJSON(Report(vpn: vpn, server: server, lastTarget: NordApp.lastConnectionKey, publicIP: insights))
-        }
-        guard let vpn else {
+        let report = await StatusReport.current()
+        if json { return try printJSON(report) }
+        guard let vpn = report.vpn else {
             stderr(NordApp.url == nil ? "NordVPN.app is not installed." : "No NordVPN VPN profile found. Open the app and connect once.")
             throw ExitCode.failure
         }
+        let insights = report.publicIP
         printRows([
             ("Status", vpn.state.styled),
-            ("Server", server),
+            ("Server", report.server),
             ("Location", insights.map { [$0.city, $0.country].compactMap { $0 }.joined(separator: ", ") }),
             ("Public IP", insights.map { $0.protected ? Style.green($0.ip) : Style.red("\($0.ip) (not protected)") }),
             ("Profile", "\(vpn.name) \(Style.dim("(\(vpn.interface ?? "-"))"))"),
@@ -110,76 +101,16 @@ struct Connect: AsyncParsableCommand {
         if !location.isEmpty {
             let resolved = try LocationResolver.resolve(location.joined(separator: " "), in: try await api.countries())
             country = resolved.country
-            if case let .city(city, in: parent) = resolved {
-                stderr(Style.yellow("The app cannot pick a city: connecting to the fastest server in \(parent.name), not specifically \(city.name)."))
-            }
+            if let warning = resolved.cityWarning { stderr(Style.yellow(warning)) }
         }
 
-        let log = AppLog()
-        try await NordApp.connect(countryCode: country?.code)
+        let request = try await ConnectionRequest.submit(countryCode: country?.code)
         print("Connecting to \(Style.bold(country?.name ?? "the fastest server"))…")
         if noWait { return }
 
-        let insights = try await waitForConnection(log: log, country: country)
-        let server = log?.server ?? country?.name ?? "NordVPN"
-        print("\(Style.green("Connected")) to \(Style.bold(server)) · \(insights.ip)")
-    }
-
-    private func waitForConnection(log: AppLog?, country: Country?) async throws -> IPInsights {
-        let clock = ContinuousClock()
-        let deadline = clock.now.advanced(by: .seconds(timeout))
-        var outcome = ConnectionOutcome.timedOut
-        while clock.now < deadline {
-            try Task.checkCancellation()
-            log?.poll()
-            let tunnelConnected = log.map { $0.state == .connected }
-                ?? (VPNService.current()?.state == .connected)
-            if tunnelConnected {
-                let remaining = clock.now.duration(to: deadline).components
-                let seconds = Double(remaining.seconds) + Double(remaining.attoseconds) / 1e18
-                guard seconds > 0 else { break }
-                let insights: IPInsights?
-                do {
-                    insights = try await NordAPI().insights(timeout: min(10, seconds))
-                } catch {
-                    try Task.checkCancellation()
-                    insights = nil
-                }
-                log?.poll()
-                let stillConnected = log.map { $0.state == .connected }
-                    ?? (VPNService.current()?.state == .connected)
-                outcome = ConnectionEvidence.outcome(
-                    tunnelConnected: stillConnected, protected: insights?.protected,
-                    expectedCountry: country?.code, observedCountry: insights?.countryCode)
-                if outcome == .verified, let insights {
-                    guard clock.now <= deadline else { throw ConnectionFailure(outcome: .timedOut) }
-                    return insights
-                }
-            } else {
-                outcome = .timedOut
-            }
-            try await clock.sleep(until: min(deadline, clock.now.advanced(by: .milliseconds(500))))
-        }
-        throw ConnectionFailure(outcome: outcome)
-    }
-}
-
-struct ConnectionFailure: LocalizedError {
-    let outcome: ConnectionOutcome
-
-    var errorDescription: String? {
-        switch outcome {
-        case .tunnelUnverified:
-            "The tunnel connected, but public IP verification failed. Check `nordvpn ip` or `nordvpn doctor`."
-        case .wrongCountry:
-            "The VPN is connected, but the public IP does not match the requested country. Check the app."
-        case .unprotected:
-            "The tunnel connected, but NordVPN reports the public IP as unprotected. Check the app."
-        case .timedOut:
-            "Connection was not confirmed before the timeout. Check the NordVPN app."
-        case .verified:
-            "Connection verification failed unexpectedly."
-        }
+        let connection = try await request.verify(within: timeout)
+        let server = connection.server ?? country?.name ?? "NordVPN"
+        print("\(Style.green("Connected")) to \(Style.bold(server)) · \(connection.publicIP.ip)")
     }
 }
 
@@ -208,25 +139,10 @@ struct Disconnect: AsyncParsableCommand {
     }
 
     func run() async throws {
-        guard NordApp.url != nil else { throw NordAppError.notInstalled }
-        guard let before = VPNService.current() else {
-            throw NordAppError.noProfile
+        switch try await NordApp.disconnect(waitingUpTo: timeout) {
+        case .alreadyDisconnected: print("Already disconnected.")
+        case .disconnected: print(Style.red("Disconnected"))
         }
-        if before.state == .disconnected {
-            print("Already disconnected.")
-            return
-        }
-        try NordApp.disconnect()
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            try await Task.sleep(for: .milliseconds(400))
-            if VPNService.current()?.state == .disconnected {
-                print(Style.red("Disconnected"))
-                return
-            }
-        }
-        stderr(Style.yellow("Asked the app to disconnect, but the tunnel is still up after \(Int(timeout))s."))
-        throw ExitCode.failure
     }
 }
 
@@ -249,8 +165,8 @@ struct Countries: AsyncParsableCommand {
 
     func run() async throws {
         var countries = try await NordAPI().countries(refresh: refresh)
-        if let filter = filter?.lowercased() {
-            countries = countries.filter { $0.name.lowercased().contains(filter) || $0.code.lowercased() == filter }
+        if let filter {
+            countries = countries.filter { $0.matches(filter) }
         }
         if json { return try printJSON(countries) }
         let width = countries.map(\.name.count).max() ?? 0
@@ -282,20 +198,7 @@ struct Cities: AsyncParsableCommand {
     }
 }
 
-enum ServerGroup: String, ExpressibleByArgument, CaseIterable {
-    case standard, p2p, double, onion, obfuscated, dedicated
-
-    var identifier: String {
-        switch self {
-        case .standard: "legacy_standard"
-        case .p2p: "legacy_p2p"
-        case .double: "legacy_double_vpn"
-        case .onion: "legacy_onion_over_vpn"
-        case .obfuscated: "legacy_obfuscated_servers"
-        case .dedicated: "legacy_dedicated_ip"
-        }
-    }
-}
+extension ServerGroup: ExpressibleByArgument {}
 
 struct Servers: AsyncParsableCommand {
     static let configuration = CommandConfiguration(

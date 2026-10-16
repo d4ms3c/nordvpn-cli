@@ -24,6 +24,12 @@ public enum Diagnostics {
         ]
     }
 
+    /// The local checks, then the API check unless `offline`.
+    public static func run(offline: Bool) async -> [DiagnosticCheck] {
+        let checks = localChecks()
+        return offline ? checks : checks + [await apiCheck()]
+    }
+
     public static func apiCheck() async -> DiagnosticCheck {
         do {
             _ = try await NordAPI().insights()

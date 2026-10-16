@@ -12,8 +12,7 @@ struct Doctor: AsyncParsableCommand {
     @Flag(help: "Skip the network check.") var offline = false
 
     func run() async throws {
-        var checks = Diagnostics.localChecks()
-        if !offline { checks.append(await Diagnostics.apiCheck()) }
+        let checks = await Diagnostics.run(offline: offline)
         if json {
             try printJSON(checks)
         } else {

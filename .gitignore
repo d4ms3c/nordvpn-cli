@@ -45,8 +45,5 @@ __pycache__/
 # Python tooling cache
 .ruff_cache/
 
-# MCP dependencies
-node_modules/
-
 # aislop hook session log
 **/.aislop/session.jsonl

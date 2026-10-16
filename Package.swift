@@ -15,13 +15,16 @@ let package = Package(
             name: "NordVPNKit",
             linkerSettings: [.linkedFramework("SystemConfiguration"), .linkedFramework("AppKit")]
         ),
+        .target(name: "NordVPNMCP", dependencies: ["NordVPNKit"]),
         .executableTarget(
             name: "nordvpn",
             dependencies: [
                 "NordVPNKit",
+                "NordVPNMCP",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
         .testTarget(name: "NordVPNKitTests", dependencies: ["NordVPNKit"]),
+        .testTarget(name: "NordVPNMCPTests", dependencies: ["NordVPNMCP", "NordVPNKit"]),
     ]
 )
