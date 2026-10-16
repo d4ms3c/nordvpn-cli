@@ -23,9 +23,9 @@ struct NordVPN: AsyncParsableCommand {
         `disconnect` needs Accessibility access for your terminal in System Settings > \
         Privacy & Security > Accessibility.
         """,
-        version: "0.1.0",
+        version: "0.2.0",
         subcommands: [Status.self, Connect.self, Disconnect.self, Countries.self, Cities.self,
-                      Servers.self, IP.self, Open.self],
+                      Servers.self, IP.self, Open.self, Doctor.self],
         defaultSubcommand: Status.self
     )
 }
@@ -98,6 +98,12 @@ struct Connect: AsyncParsableCommand {
 
     @Option(help: "Seconds to wait for the connection.") var timeout: Double = 30
 
+    mutating func validate() throws {
+        guard timeout.isFinite, timeout > 0, timeout <= 3600 else {
+            throw ValidationError("Timeout must be between 0 and 3600 seconds (exclusive of 0).")
+        }
+    }
+
     func run() async throws {
         let api = NordAPI()
         var country: Country?
@@ -114,41 +120,66 @@ struct Connect: AsyncParsableCommand {
         print("Connecting to \(Style.bold(country?.name ?? "the fastest server"))…")
         if noWait { return }
 
-        let connected = if let log { try await waitForApp(log) } else { true }
-        let insights = await settledInsights(expecting: country?.code)
-        guard connected, insights?.protected == true else {
-            stderr(Style.red("Not connected after \(Int(timeout))s. Check the NordVPN app."))
-            throw ExitCode.failure
-        }
+        let insights = try await waitForConnection(log: log, country: country)
         let server = log?.server ?? country?.name ?? "NordVPN"
-        print("\(Style.green("Connected")) to \(Style.bold(server))" + (insights.map { " · \($0.ip)" } ?? ""))
-        if let code = country?.code, let seen = insights?.countryCode, seen.uppercased() != code.uppercased() {
-            stderr(Style.yellow("Your public IP is located in \(insights?.country ?? seen), not \(country!.name)."))
-        }
+        print("\(Style.green("Connected")) to \(Style.bold(server)) · \(insights.ip)")
     }
 
-    /// Waits for the app to report the connection it started for this request.
-    private func waitForApp(_ log: AppLog) async throws -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            try await Task.sleep(for: .milliseconds(250))
-            log.poll()
-            if log.state == .connected { return true }
+    private func waitForConnection(log: AppLog?, country: Country?) async throws -> IPInsights {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: .seconds(timeout))
+        var outcome = ConnectionOutcome.timedOut
+        while clock.now < deadline {
+            try Task.checkCancellation()
+            log?.poll()
+            let tunnelConnected = log.map { $0.state == .connected }
+                ?? (VPNService.current()?.state == .connected)
+            if tunnelConnected {
+                let remaining = clock.now.duration(to: deadline).components
+                let seconds = Double(remaining.seconds) + Double(remaining.attoseconds) / 1e18
+                guard seconds > 0 else { break }
+                let insights: IPInsights?
+                do {
+                    insights = try await NordAPI().insights(timeout: min(10, seconds))
+                } catch {
+                    try Task.checkCancellation()
+                    insights = nil
+                }
+                log?.poll()
+                let stillConnected = log.map { $0.state == .connected }
+                    ?? (VPNService.current()?.state == .connected)
+                outcome = ConnectionEvidence.outcome(
+                    tunnelConnected: stillConnected, protected: insights?.protected,
+                    expectedCountry: country?.code, observedCountry: insights?.countryCode)
+                if outcome == .verified, let insights {
+                    guard clock.now <= deadline else { throw ConnectionFailure(outcome: .timedOut) }
+                    return insights
+                }
+            } else {
+                outcome = .timedOut
+            }
+            try await clock.sleep(until: min(deadline, clock.now.advanced(by: .milliseconds(500))))
         }
-        return false
+        throw ConnectionFailure(outcome: outcome)
     }
+}
 
-    /// The first request after the tunnel comes up can still leave through the old route;
-    /// without the app log this is also the only sign that the connection finished.
-    private func settledInsights(expecting code: String?) async -> IPInsights? {
-        let deadline = Date().addingTimeInterval(timeout)
-        var last: IPInsights?
-        repeat {
-            if last != nil { try? await Task.sleep(for: .seconds(1)) }
-            last = try? await NordAPI().insights()
-            if let last, last.protected, code == nil || last.countryCode?.uppercased() == code?.uppercased() { break }
-        } while Date() < deadline
-        return last
+struct ConnectionFailure: LocalizedError {
+    let outcome: ConnectionOutcome
+
+    var errorDescription: String? {
+        switch outcome {
+        case .tunnelUnverified:
+            "The tunnel connected, but public IP verification failed. Check `nordvpn ip` or `nordvpn doctor`."
+        case .wrongCountry:
+            "The VPN is connected, but the public IP does not match the requested country. Check the app."
+        case .unprotected:
+            "The tunnel connected, but NordVPN reports the public IP as unprotected. Check the app."
+        case .timedOut:
+            "Connection was not confirmed before the timeout. Check the NordVPN app."
+        case .verified:
+            "Connection verification failed unexpectedly."
+        }
     }
 }
 
@@ -170,8 +201,18 @@ struct Disconnect: AsyncParsableCommand {
 
     @Option(help: "Seconds to wait for the tunnel to close.") var timeout: Double = 15
 
+    mutating func validate() throws {
+        guard timeout.isFinite, timeout > 0, timeout <= 3600 else {
+            throw ValidationError("Timeout must be between 0 and 3600 seconds (exclusive of 0).")
+        }
+    }
+
     func run() async throws {
-        guard let before = VPNService.current(), before.state != .disconnected else {
+        guard NordApp.url != nil else { throw NordAppError.notInstalled }
+        guard let before = VPNService.current() else {
+            throw NordAppError.noProfile
+        }
+        if before.state == .disconnected {
             print("Already disconnected.")
             return
         }

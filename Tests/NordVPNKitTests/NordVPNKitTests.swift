@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import NordVPNKit
 
@@ -55,4 +56,32 @@ func resolvesCountries(query: String, code: String) throws {
     #expect(server == "Italy #100")
     for line in lines.dropFirst(2) { AppLog.parse(line, into: &state, server: &server) }
     #expect(state == .connected)
+}
+
+@Test func distinguishesTunnelFromPublicIPVerification() {
+    #expect(ConnectionEvidence.outcome(tunnelConnected: true, protected: nil,
+                                      expectedCountry: "IT", observedCountry: nil) == .tunnelUnverified)
+    #expect(ConnectionEvidence.outcome(tunnelConnected: false, protected: true,
+                                      expectedCountry: nil, observedCountry: "IT") == .timedOut)
+    #expect(ConnectionEvidence.outcome(tunnelConnected: true, protected: false,
+                                      expectedCountry: nil, observedCountry: "IT") == .unprotected)
+}
+
+@Test func requiresRequestedCountryWhenVerifyingConnection() {
+    #expect(ConnectionEvidence.outcome(tunnelConnected: true, protected: true,
+                                      expectedCountry: "it", observedCountry: "IT") == .verified)
+    #expect(ConnectionEvidence.outcome(tunnelConnected: true, protected: true,
+                                      expectedCountry: "IT", observedCountry: "PL") == .wrongCountry)
+    #expect(ConnectionEvidence.outcome(tunnelConnected: true, protected: true,
+                                      expectedCountry: "IT", observedCountry: nil) == .wrongCountry)
+    #expect(ConnectionEvidence.outcome(tunnelConnected: true, protected: true,
+                                      expectedCountry: nil, observedCountry: nil) == .verified)
+}
+
+@Test func diagnosticsDoNotIncludePersonalData() throws {
+    let data = try JSONEncoder().encode(Diagnostics.localChecks())
+    let report = String(decoding: data, as: UTF8.self)
+    #expect(!report.contains(NSHomeDirectory()))
+    #expect(!report.contains("publicIP"))
+    #expect(!report.contains("serviceID"))
 }

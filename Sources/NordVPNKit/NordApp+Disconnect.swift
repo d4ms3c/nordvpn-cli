@@ -6,8 +6,7 @@ extension NordApp {
     /// first in its menu bar extra, then in its Dock menu.
     public static func disconnect() throws {
         guard url != nil else { throw NordAppError.notInstalled }
-        let prompt = "AXTrustedCheckOptionPrompt" // kAXTrustedCheckOptionPrompt, a mutable global in Swift 6
-        guard AXIsProcessTrustedWithOptions([prompt: true] as CFDictionary) else {
+        guard AXIsProcessTrusted() else {
             throw NordAppError.accessibilityDenied
         }
         guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first else {

@@ -4,6 +4,7 @@ import Foundation
 public enum NordAppError: LocalizedError {
     case notInstalled
     case notRunning
+    case noProfile
     case accessibilityDenied
     case disconnectItemNotFound
 
@@ -11,6 +12,8 @@ public enum NordAppError: LocalizedError {
         switch self {
         case .notInstalled:
             "NordVPN.app is not installed."
+        case .noProfile:
+            "No NordVPN VPN profile found. Open the app and connect once."
         case .notRunning:
             "NordVPN.app is not running. Start it with `nordvpn open`."
         case .accessibilityDenied:

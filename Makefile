@@ -18,3 +18,10 @@ uninstall:
 
 xcode:
 	open -a Xcode Package.swift
+
+.PHONY: smoke package
+smoke: build
+	python3 scripts/smoke-test.py .build/release/nordvpn
+
+package:
+	bash scripts/package-release.sh

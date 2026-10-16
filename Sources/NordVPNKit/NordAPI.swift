@@ -68,8 +68,8 @@ public struct NordAPI: Sendable {
 
     public init() {}
 
-    public func insights() async throws -> IPInsights {
-        try await get("/v1/helpers/ips/insights")
+    public func insights(timeout: TimeInterval = 10) async throws -> IPInsights {
+        try JSONDecoder().decode(IPInsights.self, from: await fetch("/v1/helpers/ips/insights", timeout: timeout))
     }
 
     /// Countries with their cities; cached on disk for a day because the list rarely changes.
@@ -111,12 +111,16 @@ public struct NordAPI: Sendable {
         try JSONDecoder().decode(T.self, from: try await fetch(path, query: query))
     }
 
-    private func fetch(_ path: String, query: [URLQueryItem] = []) async throws -> Data {
+    private func fetch(_ path: String, query: [URLQueryItem] = [], timeout: TimeInterval = 10) async throws -> Data {
         var components = URLComponents(url: Self.base.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
         if !query.isEmpty { components.queryItems = query }
-        var request = URLRequest(url: components.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
+        var request = URLRequest(url: components.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeout)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForResource = timeout
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel() }
+        let (data, response) = try await session.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else { throw NordAPIError.http(status, path) }
         return data

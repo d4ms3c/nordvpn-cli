@@ -37,3 +37,10 @@ CLAUDE.local.md
 # Logs and scratch output
 *.log
 *.tmp
+
+# Release packages
+dist/
+__pycache__/
+
+# Python tooling cache
+.ruff_cache/
